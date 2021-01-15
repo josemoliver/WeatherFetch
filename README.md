@@ -23,4 +23,5 @@ Otherwise, you can create a new SQLite Database and Build using the following st
 ```dotnet WeatherFetch.dll -days=NUM ```
   
 where NUM is the number of days past from the time the application was executed to retrieve weather station data from AmbientWeather.net
+
 .Net Core 2.1 min is required (https://dotnet.microsoft.com/download/dotnet-core)
