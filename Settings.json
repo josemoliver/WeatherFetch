@@ -1,5 +1,6 @@
 ﻿{
   "DeviceMACAddress": "XX:XX:XX:XX:XX:XX",
   "ApiKey": "",
-  "ApplicationKey": ""
+  "ApplicationKey": "",
+  "dbPath": ""
 }

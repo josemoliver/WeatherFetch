@@ -4,22 +4,17 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using Microsoft.Data.Sqlite;
+using System.Linq;
 
 namespace WeatherFetch
 {
+
     class Program
     {
-
         static void Main(string[] args)
         {
-
-            //Read Settings.json file
-            var settingsJSON = System.IO.File.ReadAllText(@"Settings.json");
-
-            string DeviceMACAddress     = (string)JObject.Parse(settingsJSON)["DeviceMACAddress"];
-            string ApiKey               = (string)JObject.Parse(settingsJSON)["ApiKey"];
-            string ApplicationKey       = (string)JObject.Parse(settingsJSON)["ApplicationKey"];
-            string EndDate              = DateTime.Now.AddDays(1).ToString("yyyy-MM-dd");
+            string settingsPath = "";
+            string EndDate = DateTime.Now.AddDays(1).ToString("yyyy-MM-dd");         
             int Days = 0;
             
             //Obtain number of days past to fetch weather data
@@ -29,10 +24,10 @@ namespace WeatherFetch
                 {                    
                     try
                     {
-                        Days = int.Parse(args[i].Replace("-days=", "").Trim());
+                        Days = int.Parse(args[i].Replace("-days=", "").Trim())-1;
                         if ((Days<0)&&(Days>365))
                         {
-                           Days =0;
+                           Days = 0;
                         }
                     }
                     catch
@@ -41,36 +36,62 @@ namespace WeatherFetch
                     }
                 }
 
+                if (args[i].ToLower().Contains("-settingspath=") == true)
+                {
+                    try
+                    {
+                        settingsPath = args[i].Replace("-settingspath=", "").Trim();
+
+                    }
+                    catch
+                    {
+                        settingsPath = "";
+                    }
+                }
+
             }
+
+
+            //Days = 4;
+
+            //Read Settings.json file
+            var settingsJSON = System.IO.File.ReadAllText(settingsPath + "Settings.json");
+
+            string DeviceMACAddress = (string)JObject.Parse(settingsJSON)["DeviceMACAddress"];
+            string ApiKey = (string)JObject.Parse(settingsJSON)["ApiKey"];
+            string ApplicationKey = (string)JObject.Parse(settingsJSON)["ApplicationKey"];
+            string dbPath = (string)JObject.Parse(settingsJSON)["dbPath"].ToString().Trim();
+
 
             //Iterate thru days past and fetch weather data from AmbientWeather Service
             for (int i = 0; i<=Days;i++)
             {
                 string NewEndDate = DateTime.Parse(EndDate).AddDays(-1*i).ToString("yyyy-MM-dd");
-                string status = FetchReadings(DeviceMACAddress, ApiKey, ApplicationKey, NewEndDate);
+                string status = FetchReadings(DeviceMACAddress, ApiKey, ApplicationKey, NewEndDate, dbPath);
                 Console.WriteLine(status);
             }
-            
 
+            System.Environment.Exit(0);
         }
 
-        public static string FetchReadings(string DeviceMACAddress, string ApiKey, string ApplicationKey, string EndDate)
+        public static string FetchReadings(string DeviceMACAddress, string ApiKey, string ApplicationKey, string EndDate, string dbPath)
         {
             int ReadingsFound = 0;
             int ReadingsSaved = 0;
 
-            System.Threading.Thread.Sleep(1000); //Ambient Weather 1 second delay for API usage
+            System.Threading.Thread.Sleep(5000); //Ambient Weather 1 second delay for API usage
 
             string response = "";
             response = GetReadings(@"https://api.ambientweather.net/v1/devices/" + DeviceMACAddress + "?apiKey=" + ApiKey + "&applicationKey=" + ApplicationKey + "&endDate=" + EndDate);
 
             List<DeviceData> AmbientWeather = JsonConvert.DeserializeObject<List<DeviceData>>(response);
 
-            Microsoft.Data.Sqlite.SqliteConnection m_dbConnection = new SqliteConnection("Data Source=WeatherStation.sqlite;");
-            m_dbConnection.Open();
 
             foreach (DeviceData Reading in AmbientWeather)
             {
+                Microsoft.Data.Sqlite.SqliteConnection m_dbConnection = new SqliteConnection("Data Source=" + dbPath + "WeatherStation.sqlite;");
+                m_dbConnection.Open();
+
                 string LocalDateTime = "";
                 try
                 {
@@ -82,7 +103,7 @@ namespace WeatherFetch
                 }
                     ReadingsFound++;
 
-                string insertBatchIDsql = "insert into Readings values "
+                string insertReadingsSql = "insert into Readings values "
                   + "(" + Reading.dateutc
                   + "," + Reading.winddir
                   + "," + Reading.windspeedmph
@@ -109,20 +130,22 @@ namespace WeatherFetch
                   + ",'" + LocalDateTime + "')";
 
 
-                Microsoft.Data.Sqlite.SqliteCommand insertBatchID = new SqliteCommand(insertBatchIDsql, m_dbConnection);
+                Microsoft.Data.Sqlite.SqliteCommand insertReadings = new SqliteCommand(insertReadingsSql, m_dbConnection);
 
                try
                {
-                    insertBatchID.ExecuteNonQuery();
+                    insertReadings.ExecuteNonQuery();
+                    m_dbConnection.Close();
                     ReadingsSaved++;
                }
-                catch
+                catch(Exception e)
                {
-
+                    m_dbConnection.Close();
                }
             }
 
-            return EndDate + " - Reading Found=" + ReadingsFound + " Saved=" + ReadingsSaved;
+            return DateTime.Parse(EndDate).AddDays(-1).ToString("yyyy-MM-dd") + " - Reading Found=" + ReadingsFound + " Saved=" + ReadingsSaved;
+ 
         }
 
                 
