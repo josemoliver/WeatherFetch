@@ -6,8 +6,7 @@ Command line tool for fetching Ambientweather.net weather data from your Persona
 2. Obtain your Weather Station's Device MAC Address, displayed in the "Devices" page (https://ambientweather.net/devices) in AmbientWeather.net
 3. Open the Settings.json file in a text editor such as Notepad and add your MAC Address Value, API Key and Application Key.
 
-You can download the console application with an empty SQLite database file from https://github.com/josemoliver/WeatherFetch/releases
-Otherwise, you can create a new SQLite Database and Build using the following steps:
+You can create a new SQLite Database and Build using the following steps:
 
 ### Create a new SQLite Database
 1. Download and install an application such as SQLite Browser https://sqlitebrowser.org/
